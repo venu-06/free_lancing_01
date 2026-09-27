@@ -10,7 +10,7 @@ import PaymentHistoryPage from './pages/PaymentHistoryPage.jsx';
 import AuditLogPage from './pages/AuditLogPage.jsx';
 import ReportsPage from './pages/ReportsPage.jsx';
 
-const API = 'http://localhost:5000/api';
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/$/, '');
 const api = async (path, options = {}) => {
   const response = await fetch(`${API}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
   if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(body.message || `Request failed (${response.status})`); }

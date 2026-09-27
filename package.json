@@ -1,9 +1,0 @@
-{
-  "name": "construction-payment-management",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {"dev": "concurrently -k \"npm:server\" \"npm:client\"", "server": "node server/index.js", "client": "vite --host 0.0.0.0", "build": "vite build"},
-  "dependencies": {"cors": "^2.8.5", "dotenv": "^16.4.7", "exceljs": "^4.4.0", "express": "^4.21.2", "mongoose": "^8.9.5", "react": "^18.3.1", "react-dom": "^18.3.1", "recharts": "^2.15.0"},
-  "devDependencies": {"@vitejs/plugin-react": "^4.3.4", "concurrently": "^9.1.2", "vite": "^6.0.7"}
-}

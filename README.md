@@ -1,44 +1,46 @@
 # BuildLedger — Construction Payment Management
 
-A React and Express application for tracking construction projects, work categories, vendors, installment payments, and outstanding balances.
+A construction payments app split into independently deployable frontend and backend services.
 
-## Requirements
+## Project folders
 
-- Node.js 18+
-- MongoDB Community Server or a MongoDB Atlas connection string
+- `frontend/` — React and Vite user interface
+- `backend/` — Express API, MongoDB models, and Excel import/report endpoints
 
 ## Run locally
 
-```bash
-npm install
-Copy-Item .env.example .env
-# Edit .env and set MONGODB_URI to your MongoDB connection string.
-npm run dev
-```
+1. Copy `backend/.env.example` to `backend/.env` and add your MongoDB connection string.
+2. In a terminal run `cd backend`, `npm install`, then `npm run dev`.
+3. In a second terminal run `cd frontend`, `npm install`, then `npm run dev`.
+4. Open `http://localhost:5173`.
 
-The React app is served at `http://localhost:5173`; the API listens at `http://localhost:5000`.
+The frontend uses `http://localhost:5000/api` locally. To point it at another API, set `VITE_API_URL` before building (include the `/api` suffix).
 
-## Features
+## Deploy both services to Render
 
-- Project setup and status tracking
-- Work categories with vendor contact and agreed contract amount
-- Dated installment payments with method, reference, and notes
-- Automatic paid totals and remaining balance calculations
-- Payment history and downloadable CSV report
-- Outstanding payment report API
-- Responsive dashboard with cash flow and project progress views
+This repository includes a root-level `render.yaml` Blueprint defining both services. In Render, create a **New Blueprint Instance** and choose this GitHub repository. Render will create:
 
-The dashboard starts with sample construction data for an immediate preview. The API persists user-created records in MongoDB. Payment amounts must be positive; the API allows recording overpayments, and the balance formula can therefore become negative if a contract is overpaid.
+- `buildledger-api-venu06` from the `backend/` folder
+- `buildledger-frontend-venu06` from the `frontend/` folder
 
-## API
+When prompted, provide `MONGODB_URI` for the API service. Keep this value in Render's environment settings, never in GitHub. The frontend build is configured with `VITE_API_URL=https://buildledger-api-venu06.onrender.com/api`. If Render assigns a different API hostname, update this variable on the frontend service and redeploy it.
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/health` | Service health |
-| GET, POST | `/api/projects` | List and create projects |
-| PATCH, DELETE | `/api/projects/:projectId` | Update or remove a project |
-| POST | `/api/projects/:projectId/categories` | Add a work category |
-| PATCH, DELETE | `/api/projects/:projectId/categories/:categoryId` | Update or remove a category |
-| POST | `/api/projects/:projectId/categories/:categoryId/payments` | Record an installment |
-| DELETE | `/api/projects/:projectId/categories/:categoryId/payments/:paymentId` | Remove a payment |
-| GET | `/api/reports/outstanding` | List unpaid balances |
+If you prefer creating services separately, use these settings:
+
+### Backend web service
+
+- Root directory: `backend`
+- Build command: `npm ci`
+- Start command: `npm start`
+- Health check path: `/api/health`
+- Environment variables: `MONGODB_URI` (your MongoDB Atlas connection string); Render supplies `PORT` automatically.
+
+### Frontend static site
+
+- Root directory: `frontend`
+- Build command: `npm ci && npm run build`
+- Publish directory: `dist`
+- Environment variable: `VITE_API_URL=https://<your-backend-service>.onrender.com/api`
+- Rewrite all paths to `/index.html` for the app's section URLs.
+
+For MongoDB Atlas, allow connections from Render in your Atlas network access settings. Never commit `.env` files or database credentials.
