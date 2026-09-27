@@ -1,0 +1,37 @@
+import React from 'react';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Empty, Icon, Stat, TransactionList } from '../components/UI.jsx';
+import { idOf, isToday, money, paidOf, shortDate } from '../lib/format.js';
+
+export default function OverviewPage({ projects, transactions, totals, currentMonthPayments, overdueRows, trend, onOpenProject, onViewProjects, onViewHistory, onViewReports, onReminder, onBackup, onRestore, onRestoreFile, restoreInput }) {
+  const monthPaid = currentMonthPayments.reduce((sum, payment) => sum + Number(payment.amount), 0);
+  const overdueBalance = overdueRows.reduce((sum, row) => sum + Math.max(0, row.balance), 0);
+  const todayPayments = transactions.filter(payment => isToday(payment.date)).length;
+  return <>
+    <section className="stats-grid">
+      <Stat title="Total committed" value={money(totals.agreed)} detail={`Across ${projects.length} saved projects`} icon="layers" tone="lavender"/>
+      <Stat title="Paid to date" value={money(totals.paid)} detail={`${transactions.length} recorded installments`} icon="arrow" tone="green"/>
+      <Stat title="Outstanding balance" value={money(totals.due)} detail={`${projects.flatMap(project => project.categories || []).filter(category => Number(category.agreedAmount || 0) - paidOf(category) > 0).length} categories with a balance`} icon="clock" tone="amber"/>
+      <Stat title="Active projects" value={String(projects.filter(project => project.status !== 'Completed').length).padStart(2, '0')} detail={`${projects.filter(project => project.status === 'In progress').length} in progress`} icon="building" tone="blue"/>
+    </section>
+    <section className="mini-summary-grid">
+      <Stat title="Paid this month" value={money(monthPaid)} detail={`${currentMonthPayments.length} installments this month`} icon="arrow" tone="green"/>
+      <Stat title="Overdue balance" value={money(overdueBalance)} detail={`${overdueRows.length} categories past due`} icon="clock" tone="amber"/>
+      <Stat title="Payments today" value={String(todayPayments)} detail="Recent activity count" icon="card" tone="blue"/>
+    </section>
+    <section className="middle-grid">
+      <div className="panel chart-panel">
+        <div className="panel-head"><div><div className="panel-title">Cash flow overview</div><div className="panel-subtitle">Payment activity from saved transactions</div></div></div>
+        <div className="chart-legend"><span><i className="legend-actual"/>Payments</span></div>
+        <div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><AreaChart data={trend} margin={{ top: 12, right: 8, left: -15, bottom: 0 }}><defs><linearGradient id="paidFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#557C43" stopOpacity={0.17}/><stop offset="90%" stopColor="#557C43" stopOpacity={0}/></linearGradient></defs><CartesianGrid stroke="#eff0ec" vertical={false}/><XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#969b94', fontSize: 11 }} dy={11}/><YAxis axisLine={false} tickLine={false} tick={{ fill: '#969b94', fontSize: 10 }} tickFormatter={value => value >= 1000000 ? `₹${(value / 1000000).toFixed(1)}m` : `₹${Math.round(value / 1000)}k`} tickCount={5}/><Tooltip formatter={value => money(value)}/><Area type="monotone" dataKey="actual" stroke="#557c43" strokeWidth={2.5} fill="url(#paidFill)"/></AreaChart></ResponsiveContainer></div>
+        <div className="chart-foot"><span><b>{money(trend.at(-1)?.actual || 0)}</b> paid this month</span></div>
+      </div>
+      <div className="panel project-panel"><div className="panel-head"><div><div className="panel-title">Project health</div><div className="panel-subtitle">Payment progress by project</div></div><button className="text-action" onClick={onViewProjects}>View all <Icon name="arrow" size={14}/></button></div><div className="health-list">{projects.slice(0, 4).map((project, i) => { const categories = project.categories || []; const budget = categories.reduce((sum, category) => sum + Number(category.agreedAmount || 0), 0); const paid = categories.reduce((sum, category) => sum + paidOf(category), 0); return <button className="health-row health-button" key={idOf(project)} onClick={() => onOpenProject(project)}><div className={`health-icon health-${i % 4}`}><Icon name="building" size={17}/></div><div className="health-content"><div className="health-name-line"><b>{project.name}</b><span className={`status status-${(project.status || 'In progress').toLowerCase().replace(' ', '-')}`}>{project.status || 'In progress'}</span></div><div className="progress-track"><i style={{ width: `${budget ? Math.min(100, paid / budget * 100) : 0}%` }}/></div><div className="health-foot"><span>{money(paid)} paid</span><span>{money(budget)} total</span></div></div><span className="health-percent">{budget ? Math.round(paid / budget * 100) : 0}%</span></button>; })}{projects.length === 0 && <Empty title="No saved projects" detail="Create your first project to begin."/>}</div></div>
+    </section>
+    <section className="bottom-grid">
+      <div className="panel transactions-panel"><div className="panel-head"><div><div className="panel-title">Recent transactions</div><div className="panel-subtitle">Latest payment installments</div></div><button className="text-action" onClick={onViewHistory}>Search history →</button></div><TransactionList transactions={transactions.slice(0, 5)}/></div>
+      <div className="panel outstanding-panel"><div className="panel-head"><div><div className="panel-title">Outstanding payments</div><div className="panel-subtitle">Needs your attention</div></div></div><div className="outstanding-total"><div><span>Total to pay</span><b>{money(totals.due)}</b></div><div className="due-icon"><Icon name="clock" size={17}/></div></div><div className="due-list">{projects.flatMap(project => (project.categories || []).map(category => ({ project, category, balance: Number(category.agreedAmount || 0) - paidOf(category) }))).filter(row => row.balance > 0).sort((a, b) => b.balance - a.balance).slice(0, 4).map((row, i) => <div className="due-row" key={idOf(row.category)}><div className={`due-avatar da-${i % 4}`}>{row.category.vendor.split(/\s+/).map(word => word[0]).join('').slice(0, 2).toUpperCase()}</div><div className="due-person"><b>{row.category.vendor}</b><span>{row.category.name} · {row.project.name}{row.category.dueDate ? ` · Due ${shortDate(row.category.dueDate)}` : ' · Due date not set'}</span></div><div className="due-amount"><b>{money(row.balance)}</b><button className="reminder-action" onClick={() => onReminder(row)}>{row.category.dueDate && new Date(row.category.dueDate) < new Date(new Date().toDateString()) ? 'Remind' : 'Copy reminder'}</button></div></div>)}</div><button className="all-outstanding" onClick={onViewReports}>View outstanding report <Icon name="arrow" size={14}/></button></div>
+    </section>
+    <section className="backup-tools panel"><div><div className="panel-title">Data backup</div><div className="panel-subtitle">Download a copy or restore saved project records.</div></div><div><button className="btn btn-secondary" onClick={onBackup}><Icon name="download" size={15}/> Download backup</button><button className="btn btn-primary" onClick={onRestore}>Restore backup</button><input ref={restoreInput} onChange={onRestoreFile} type="file" accept="application/json,.json" hidden/></div></section>
+  </>;
+}
